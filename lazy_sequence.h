@@ -6,14 +6,14 @@
 #include "base/exceptions.h"
 #include "generator.h"
 
-// ==================== LAZYSEQUENCE ====================
+
 template<typename T>
 class LazySequence : public Sequence<T> {
 private:
     IGenerator<T>* generator;
     MutableArraySequence<T>* computed_values;
     bool is_finite;
-    int finite_length; // если последовательность стала конечной, здесь хранится длина
+    int finite_length;
 
 protected:
     Sequence<T>* Instance() override {return this;} 
@@ -23,7 +23,6 @@ protected:
         IGenerator<T>* new_gen = new AppendGenerator<T>(generator, item, computed_values->GetLength());
         LazySequence<T>* new_seq = new LazySequence<T>(new_gen, new_length);
         
-        // копируем уже вычисленные значения
         for (int i = 0; i < computed_values->GetLength(); ++i)
             new_seq->computed_values->Append(computed_values->Get(i));
         new_seq->computed_values->Append(item);
@@ -36,7 +35,6 @@ protected:
         IGenerator<T>* new_gen = new PrependGenerator<T>(generator, item);
         LazySequence<T>* new_seq = new LazySequence<T>(new_gen, new_length);
         
-        // копируем уже вычисленные значения со сдвигом
         new_seq->computed_values->Append(item);
         for (int i = 0; i < computed_values->GetLength(); ++i)
             new_seq->computed_values->Append(computed_values->Get(i));
@@ -56,7 +54,6 @@ protected:
         IGenerator<T>* new_gen = new InsertAtGenerator<T>(generator, item, index);
         LazySequence<T>* new_seq = new LazySequence<T>(new_gen, new_length);
         
-        // копируем уже вычисленные значения с вставкой
         for (int i = 0; i < computed_values->GetLength(); ++i) {
             if (i == index && i < computed_values->GetLength())
                 new_seq->computed_values->Append(item);
@@ -80,7 +77,6 @@ protected:
         IGenerator<T>* new_gen = new RemoveAtGenerator<T>(generator, index);
         LazySequence<T>* new_seq = new LazySequence<T>(new_gen, new_length);
         
-        // копируем уже вычисленные значения, пропуская удаляемый индекс
         for (int i = 0; i < computed_values->GetLength(); ++i) {
             if (i != index)
                 new_seq->computed_values->Append(computed_values->Get(i));
@@ -94,17 +90,13 @@ protected:
         int second_len = other->GetLength();
         int new_length = first_len + second_len;
         
-        // Создаем генератор, который использует исходный генератор для первой части
-        // и напрямую обращается к other для второй части
         IGenerator<T>* new_gen = new ConcatGenerator<T>(generator, other, first_len);
         LazySequence<T>* new_seq = new LazySequence<T>(new_gen, new_length);
         
-        // Копируем уже вычисленные значения из первой части
         for (int i = 0; i < computed_values->GetLength(); ++i)
             new_seq->computed_values->Append(computed_values->Get(i));
         
-        // Копируем значения из второй части, если они уже вычислены
-        int copy_count = (second_len < 10) ? second_len : 10; // копируем не более 10 элементов для демонстрации
+        int copy_count = (second_len < 10) ? second_len : 10;
         for (int i = 0; i < copy_count && i < other->GetLength(); ++i)
             new_seq->computed_values->Append(other->Get(i));
         
@@ -114,28 +106,23 @@ protected:
 
 
 public:
-    // Конструктор для бесконечной ленивой последовательности
     LazySequence(IGenerator<T>* gen)
         : generator(gen), computed_values(new MutableArraySequence<T>()), 
           is_finite(false), finite_length(-1) {}
 
-    // Конструктор для бесконечной последовательности по правилу      
     LazySequence(T (*rule)(const T&)) 
         : generator(new GeneratorRule<T>(rule)), computed_values(new MutableArraySequence<T>()), 
           is_finite(false), finite_length(-1) {}
 
-    // Конструктор для конечной последовательности с известной длиной
     LazySequence(IGenerator<T>* gen, int length)
         : generator(gen), computed_values(new MutableArraySequence<T>()), 
           is_finite(true), finite_length(length) {}
 
-    // Конструктор копирования
     LazySequence(const LazySequence& other)
         : generator(other.generator->Clone()), 
           computed_values(new MutableArraySequence<T>()),
           is_finite(other.is_finite), finite_length(other.finite_length)
     {
-        // копируем уже вычисленные значения
         for (int i = 0; i < other.computed_values->GetLength(); ++i)
             computed_values->Append(other.computed_values->Get(i));
     }
@@ -145,7 +132,6 @@ public:
         delete computed_values;
     }
 
-    // Приватный метод: вычисляет все значения до index включительно
     void ComputeUpTo(int index) {
         if (is_finite && index >= finite_length)
             throw IndexOutOfRangeException("Index exceeds finite sequence length");
@@ -221,12 +207,10 @@ public:
         return Option<T>::None();
     }
     
-    // Перегрузка оператора []
     const T& operator[](int index) const override {
         return Get(index);
     }
     
-    // Итератор (упрощённый)
     class LazyEnumerator : public IEnumerator<T> {
     private:
         const LazySequence<T>& seq;
@@ -261,7 +245,6 @@ public:
         if (is_finite && end >= finite_length)
             throw InvalidArgumentException("End index exceeds sequence length");
         
-        // вычисляем значения до end
         const_cast<LazySequence*>(this)->ComputeUpTo(end);
         
         MutableArraySequence<T>* sub = new MutableArraySequence<T>();
@@ -271,27 +254,22 @@ public:
         return sub;
     }
 
-    // MAP - создает новый генератор MapGenerator
     Sequence<T>* Map(T (*func)(const T&)) const override {
         IGenerator<T>* new_gen = new MapGenerator<T>(generator, func);
         LazySequence<T>* new_seq;
         if (is_finite) new_seq = new LazySequence<T>(new_gen, finite_length);
         else new_seq = new LazySequence<T>(new_gen);
         
-        // преобразуем уже вычисленные значения
         for (int i = 0; i < computed_values->GetLength(); ++i)
             new_seq->computed_values->Append(func(computed_values->Get(i)));
         
         return new_seq;
     }
 
-    // WHERE - создает новый генератор WhereGenerator
     Sequence<T>* Where(bool (*predicate)(const T&)) const override {
         IGenerator<T>* new_gen = new WhereGenerator<T>(generator, predicate);
-        // Where делает последовательность потенциально бесконечной, но с фильтрацией
         LazySequence<T>* new_seq = new LazySequence<T>(new_gen);
-        
-        // фильтруем уже вычисленные значения
+    
         for (int i = 0; i < computed_values->GetLength(); ++i) {
             T val = computed_values->Get(i);
             if (predicate(val))

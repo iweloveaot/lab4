@@ -1,12 +1,11 @@
 
 // MarkovMachine.h
-#ifndef MARKOV_MACHINE_H
-#define MARKOV_MACHINE_H
+#ifndef _MARKOV_MACHINE_H_
+#define _MARKOV_MACHINE_H_
 
 #include <iostream>
 #include "base/mutable_array_sequence.h"
 
-// Вспомогательная функция для работы с C-строками без <string>
 inline int StrLen(const char* str) {
     if (!str) return 0;
     int len = 0;
@@ -50,7 +49,7 @@ inline char* StrDup(const char* src) {
     return dup;
 }
 
-// Правило Маркова: шаблон -> замена
+
 class MarkovRule {
 private:
     char* pattern;
@@ -80,7 +79,6 @@ public:
     const char* GetReplacement() const { return replacement; }
     bool IsFinal() const { return isFinal; }
     
-    // Найти первое вхождение паттерна в последовательность символов
     int FindInSequence(const MutableArraySequence<char>& seq, int startPos = 0) const {
         int seqLen = seq.GetLength();
         int patLen = StrLen(pattern);
@@ -100,33 +98,29 @@ public:
         return -1;
     }
     
-    // Применить замену в последовательности
     void ApplyToSequence(MutableArraySequence<char>& seq, int pos) const {
         int patLen = StrLen(pattern);
         int replLen = StrLen(replacement);
         
-        // Удаляем паттерн
         for (int i = 0; i < patLen; i++) {
-            seq.RemoveAt(pos);  // Предполагаем, что MutableArraySequence имеет RemoveAt
+            seq.RemoveAt(pos); 
         }
         
-        // Вставляем замену
         for (int i = replLen - 1; i >= 0; i--) {
             seq.InsertAt(replacement[i], pos);
         }
     }
 };
 
-// Машина Маркова: реализация нормальных алгоритмов Маркова
+
 class MarkovMachine {
 private:
-    MutableArraySequence<char>* input;  // Текущее состояние как последовательность символов
-    DynamicArray<MarkovRule*> rules;    // Список правил
+    MutableArraySequence<char>* input;  
+    DynamicArray<MarkovRule*> rules;
     int maxSteps;
     int currentStep;
     bool halted;
     
-    // Преобразовать C-строку в последовательность
     MutableArraySequence<char>* StrToSequence(const char* str) {
         if (!str) return new MutableArraySequence<char>();
         int len = StrLen(str);
@@ -147,13 +141,11 @@ public:
         }
     }
     
-    // Добавить правило
     void AddRule(const char* pattern, const char* replacement, bool isFinal = false) {
         rules.Resize(rules.GetSize() + 1);
         rules.Set(rules.GetSize() - 1, new MarkovRule(pattern, replacement, isFinal));
     }
     
-    // Установить входную строку
     void SetInput(const char* str) {
         delete input;
         input = StrToSequence(str);
@@ -176,7 +168,6 @@ public:
         return res;
     }
     
-    // Выполнить один шаг алгоритма
     bool Step() {
         if (!input || halted) return false;
         if (currentStep >= maxSteps) {
@@ -184,27 +175,22 @@ public:
             return false;
         }
         
-        // Поиск первого применимого правила
         for (int r = 0; r < rules.GetSize(); r++) {
             MarkovRule* rule = rules.Get(r);
             int pos = rule->FindInSequence(*input);
             if (pos >= 0) {
-                // Применяем правило
                 rule->ApplyToSequence(*input, pos);
                 currentStep++;
-                // Если правило финальное — останавливаемся
                 if (rule->IsFinal()) {
                     halted = true;
                 }
-                return true;  // Шаг выполнен
+                return true; 
             }
         }
-        // Ни одно правило не применимо
         halted = true;
         return false;
     }
     
-    // Выполнить алгоритм до завершения
     bool Execute() {
         while (!halted) {
             if (!Step()) break;
@@ -217,5 +203,5 @@ public:
     int GetLength() const { return input ? input->GetLength() : 0; }
 };
 
-#endif // MARKOV_MACHINE_H
+#endif // _MARKOV_MACHINE_H_
 

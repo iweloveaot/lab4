@@ -1,10 +1,10 @@
 // Generator.h
-#ifndef GENERATOR_H
-#define GENERATOR_H
+#ifndef _GENERATOR_H_
+#define _GENERATOR_H_
 
 #include "base/exceptions.h"
 
-// ==================== БАЗОВЫЙ ИНТЕРФЕЙС ГЕНЕРАТОРА ====================
+
 template<typename T>
 class IGenerator {
 public:
@@ -13,7 +13,7 @@ public:
     virtual IGenerator<T>* Clone() const = 0;
 };
 
-// ==================== ПОРОЖДАЮЩИЙ ГЕНЕРАТОР ====================
+
 template<typename T>
 class GeneratorRule : public IGenerator<T> {
 private:
@@ -30,7 +30,7 @@ public:
     }
 };
 
-// ==================== ГЕНЕРАТОР MAP ====================
+
 template<typename T>
 class MapGenerator : public IGenerator<T> {
 private:
@@ -54,13 +54,13 @@ public:
     }
 };
 
-// ==================== ГЕНЕРАТОР WHERE ====================
+
 template<typename T>
 class WhereGenerator : public IGenerator<T> {
 private:
     IGenerator<T>* source_gen;
     bool (*predicate)(const T&);
-    mutable MutableArraySequence<int>* valid_indices; // кэш индексов подходящих элементов
+    mutable MutableArraySequence<int>* valid_indices; 
     mutable int last_computed_index;
     
     void ComputeUntil(int target_index) const {
@@ -109,13 +109,13 @@ public:
     }
 };
 
-// ==================== ГЕНЕРАТОР APPEND ====================
+
 template<typename T>
 class AppendGenerator : public IGenerator<T> {
 private:
     IGenerator<T>* source_gen;
     T appended_value;
-    int source_length; // длина исходной последовательности
+    int source_length; 
     
 public:
     AppendGenerator(const IGenerator<T>* src, T value, int src_len)
@@ -141,7 +141,7 @@ public:
     }
 };
 
-// ==================== ГЕНЕРАТОР PREPEND ====================
+
 template<typename T>
 class PrependGenerator : public IGenerator<T> {
 private:
@@ -169,7 +169,7 @@ public:
     }
 };
 
-// ==================== ГЕНЕРАТОР INSERTAT ====================
+
 template<typename T>
 class InsertAtGenerator : public IGenerator<T> {
 private:
@@ -201,7 +201,7 @@ public:
     }
 };
 
-// ==================== ГЕНЕРАТОР REMOVEAT ====================
+
 template<typename T>
 class RemoveAtGenerator : public IGenerator<T> {
 private:
@@ -229,12 +229,12 @@ public:
     }
 };
 
-// ==================== ГЕНЕРАТОР CONCAT ====================
+
 template<typename T>
 class ConcatGenerator : public IGenerator<T> {
 private:
     IGenerator<T>* source_gen;
-    const Sequence<T>* other_seq;  // храним указатель на другую последовательность
+    const Sequence<T>* other_seq; 
     int source_length;
     
 public:
@@ -264,4 +264,4 @@ public:
     }
 };
 
-#endif // GENERATOR_H
+#endif // _GENERATOR_H_
