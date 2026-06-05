@@ -92,16 +92,36 @@ void LazySequence<T>::Remove(const OrdinalIndex& index) {
 
 template<typename T>
 void LazySequence<T>::InsertSequence(const OrdinalIndex& index, IGenerator<T>* seq) {
+    // ИСПРАВЛЕНИЕ: Запрещаем вставку последовательностей в конечную зону
+    // Вставка разрешена только на границах омега-блоков (w, 2w, 3w...)
+    if (index.finitePart != 0 and index.omegaPart == 0) {
+        throw std::invalid_argument("InsertSequence is only allowed at omega boundaries (e.g., w, 2w). Finite part must be 0.");
+    }
+    // 1. Сдвигаем кэш
     for(int i = 0; i < cache->GetLength(); i++) {
         if(cache->Get(i).index >= index) {
-            const_cast<CachedValue<T>&>(cache->Get(i)).index.omegaPart++;
+            auto& cachedIdx = const_cast<CachedValue<T>&>(cache->Get(i)).index;
+            cachedIdx.omegaPart++;
+            // ИСПРАВЛЕНИЕ: Убираем "хвост", чтобы элементы плотно прижались к новому блоку
+            cachedIdx.finitePart -= index.finitePart; 
         }
     }
+    
+    // 2. Сдвигаем границы существующих диапазонов генератора
     for(int i = 0; i < generator->GetRangeCount(); i++) {
         auto& range = generator->GetRangeMutable(i);
-        if(range.start >= index) range.start.omegaPart++;
-        if(range.end >= index) range.end.omegaPart++;
+        
+        if(range.start >= index) {
+            range.start.omegaPart++;
+            range.start.finitePart -= index.finitePart; // ИСПРАВЛЕНИЕ
+        }
+        if(range.end >= index) {
+            range.end.omegaPart++;
+            range.end.finitePart -= index.finitePart; // ИСПРАВЛЕНИЕ
+        }
     }
+    
+    // 3. Вставляем саму новую последовательность
     generator->InsertSequence(index, seq);
 }
 
