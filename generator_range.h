@@ -10,10 +10,11 @@ struct GeneratorRange {
     OrdinalIndex start;
     OrdinalIndex end;
     IGenerator<T>* generator;
+    int localOffset; // НОВОЕ: С какого локального индекса генератора начинается этот диапазон
 
-    GeneratorRange() : generator(nullptr) {}
-    GeneratorRange(const OrdinalIndex& s, const OrdinalIndex& e, IGenerator<T>* gen)
-        : start(s), end(e), generator(gen) {}
+    GeneratorRange() : generator(nullptr), localOffset(0) {}
+    GeneratorRange(const OrdinalIndex& s, const OrdinalIndex& e, IGenerator<T>* gen, int offset = 0)
+        : start(s), end(e), generator(gen), localOffset(offset) {}
 };
 
 #endif

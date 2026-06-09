@@ -3,8 +3,7 @@
 
 #include <string>
 
-struct OrdinalIndex
-{
+struct OrdinalIndex {
     int omegaPart;
     int finitePart;
 
@@ -13,6 +12,26 @@ struct OrdinalIndex
 
     OrdinalIndex operator+(int value) const {
         return OrdinalIndex(omegaPart, finitePart + value);
+    }
+
+    // НОВОЕ: Математически верный сдвиг при вставке бесконечности (omega) в точку X
+    OrdinalIndex ShiftByOmega(const OrdinalIndex& X) const {
+        if (this->omegaPart == X.omegaPart) {
+            // Элемент был в том же омега-блоке. Он уезжает на следующий уровень.
+            // Его новая конечная часть = старая конечная часть - точка вставки.
+            return OrdinalIndex(this->omegaPart + 1, this->finitePart - X.finitePart);
+        } else {
+            // Элемент был на уровне выше (например, w или 2w). Он просто поднимается на уровень выше.
+            return OrdinalIndex(this->omegaPart + 1, this->finitePart);
+        }
+    }
+
+    // Сдвиг на ординальное смещение (используется при конкатенации)
+    OrdinalIndex ShiftBy(const OrdinalIndex& shift) const {
+        return OrdinalIndex(
+            this->omegaPart + shift.omegaPart,
+            this->finitePart + shift.finitePart
+        );
     }
 
     bool operator==(const OrdinalIndex& other) const {

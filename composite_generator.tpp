@@ -11,6 +11,26 @@ CompositeGenerator<T>::CompositeGenerator() {
 }
 
 template<typename T>
+CompositeGenerator<T>::CompositeGenerator(const CompositeGenerator& other) {
+    ranges = new MutableArraySequence<GeneratorRange<T>>();
+    removedIndices = new MutableArraySequence<MutableArraySequence<int>*>();
+    
+    for(int i = 0; i < other.ranges->GetLength(); i++) {
+        const auto& r = other.ranges->Get(i);
+        // ВАЖНО: Клонируем генератор, чтобы избежать double free!
+        ranges->Append(GeneratorRange<T>(r.start, r.end, r.generator->Clone(), r.localOffset));
+        
+        // Глубокое копирование списков удаленных индексов
+        auto* otherRemoved = other.removedIndices->Get(i);
+        auto* newRemoved = new MutableArraySequence<int>();
+        for(int j = 0; j < otherRemoved->GetLength(); j++) {
+            newRemoved->Append(otherRemoved->Get(j));
+        }
+        removedIndices->Append(newRemoved);
+    }
+}
+
+template<typename T>
 CompositeGenerator<T>::~CompositeGenerator() {
     for(int i = 0; i < ranges->GetLength(); i++) delete ranges->Get(i).generator;
     for(int i = 0; i < removedIndices->GetLength(); i++) delete removedIndices->Get(i);
@@ -32,11 +52,9 @@ const GeneratorRange<T>& CompositeGenerator<T>::GetRange(int index) const { retu
 
 template<typename T>
 GeneratorRange<T>& CompositeGenerator<T>::GetRangeMutable(int index) { 
-    // Снимаем константность, так как нам нужно менять границы диапазонов in-place
     return const_cast<GeneratorRange<T>&>(ranges->Get(index)); 
 }
 
-// Ищем с конца, чтобы новые (вставленные) диапазоны перекрывали старые
 template<typename T>
 int CompositeGenerator<T>::FindRange(const OrdinalIndex& index) const {
     for(int i = ranges->GetLength() - 1; i >= 0; i--) {
@@ -68,8 +86,8 @@ T CompositeGenerator<T>::Generate(const OrdinalIndex& index) const {
 
     const auto& range = ranges->Get(rangeIndex);
     
-    // ИСПРАВЛЕНИЕ: Вычитаем старт диапазона для получения истинного локального индекса
-    int trueLocalIndex = index.finitePart - range.start.finitePart;
+    // ИСПРАВЛЕНИЕ: Учитываем localOffset при расчете истинного индекса генератора
+    int trueLocalIndex = range.localOffset + (index.finitePart - range.start.finitePart);
     int genIndex = ToGeneratorIndex(rangeIndex, trueLocalIndex);
     
     return range.generator->Generate(genIndex);
@@ -81,9 +99,7 @@ void CompositeGenerator<T>::Remove(const OrdinalIndex& index) {
     if(rangeIndex < 0) return;
 
     const auto& range = ranges->Get(rangeIndex);
-    // ИСПРАВЛЕНИЕ: Сохраняем именно истинный локальный индекс
-    int trueLocalIndex = index.finitePart - range.start.finitePart;
-    
+    int trueLocalIndex = range.localOffset + (index.finitePart - range.start.finitePart);
     removedIndices->Get(rangeIndex)->Append(trueLocalIndex);
 }
 
@@ -91,8 +107,16 @@ template<typename T>
 void CompositeGenerator<T>::ShiftAllRanges(int count) {
     for(int i = 0; i < ranges->GetLength(); i++) {
         auto& range = GetRangeMutable(i);
-        range.start.finitePart += count;
-        range.end.finitePart += count;
+        
+        // Сдвигаем левую границу только если она в конечной зоне
+        if (range.start.omegaPart == 0) {
+            range.start.finitePart += count;
+        }
+        
+        // Сдвигаем правую границу только если она в конечной зоне И не является пределом
+        if (range.end.omegaPart == 0 && range.end.finitePart != 0) {
+            range.end.finitePart += count;
+        }
     }
 }
 
@@ -100,24 +124,83 @@ template<typename T>
 void CompositeGenerator<T>::ShiftRangesAfter(const OrdinalIndex& border, int delta) {
     for(int i = 0; i < ranges->GetLength(); i++) {
         auto& range = GetRangeMutable(i);
-        if(range.start > border) range.start.finitePart += delta;
-        if(range.end > border) range.end.finitePart += delta;
+        
+        // Сдвигаем границы только если они в том же омега-блоке и строго после border
+        if(range.start.omegaPart == border.omegaPart && range.start.finitePart > border.finitePart) {
+            range.start.finitePart += delta;
+        }
+        
+        if(range.end.omegaPart == border.omegaPart && range.end.finitePart > border.finitePart) {
+            range.end.finitePart += delta;
+        }
     }
 }
 
 template<typename T>
-void CompositeGenerator<T>::InsertSequence(const OrdinalIndex& start, IGenerator<T>* generator) {
-    OrdinalIndex end(start.omegaPart + 1, 0);
-    AddRange(GeneratorRange<T>(start, end, generator->Clone()));
+OrdinalIndex CompositeGenerator<T>::GetMaxEnd() const {
+    OrdinalIndex maxEnd(0, 0);
+    for(int i = 0; i < ranges->GetLength(); i++) {
+        if(ranges->Get(i).end > maxEnd) {
+            maxEnd = ranges->Get(i).end;
+        }
+    }
+    return maxEnd;
+}
+
+
+// ГЛАВНОЕ ИСПРАВЛЕНИЕ: Расщепление генератора и ординальный сдвиг
+template<typename T>
+void CompositeGenerator<T>::InsertSequence(const OrdinalIndex& X, IGenerator<T>* newSeqGen) {
+    // 1. Ищем диапазон, внутрь которого попала точка вставки X
+    int splitRangeIdx = -1;
+    for(int i = 0; i < ranges->GetLength(); i++) {
+        const auto& r = ranges->Get(i);
+        if (X > r.start && X < r.end) {
+            splitRangeIdx = i;
+            break;
+        }
+    }
+
+    // 2. Сдвигаем все диапазоны, которые находятся СТРОГО ПОСЛЕ X
+    for(int i = 0; i < ranges->GetLength(); i++) {
+        auto& r = GetRangeMutable(i);
+        if (r.start >= X) {
+            r.start = r.start.ShiftByOmega(X);
+            r.end = r.end.ShiftByOmega(X);
+        }
+    }
+
+    // 3. Если X попала ВНУТРЬ диапазона, разрезаем его на две части
+    if (splitRangeIdx != -1) {
+        auto& origRange = GetRangeMutable(splitRangeIdx);
+        
+        OrdinalIndex origEnd = origRange.end;
+        int origOffset = origRange.localOffset;
+        IGenerator<T>* origGen = origRange.generator;
+
+        // Левая часть остается на месте, но обрывается на X
+        origRange.end = X;
+        
+        // Правая часть уезжает на новый уровень омеги
+        OrdinalIndex newStart = X.ShiftByOmega(X); 
+        OrdinalIndex newEnd = origEnd.ShiftByOmega(X);
+        // Новый offset = старый offset + расстояние от начала диапазона до X
+        int newOffset = origOffset + (X.finitePart - origRange.start.finitePart);
+        
+        AddRange(GeneratorRange<T>(newStart, newEnd, origGen->Clone(), newOffset));
+    }
+
+    // 4. Вставляем саму новую последовательность (она занимает место от X до X+omega)
+    OrdinalIndex newSeqEnd = X.ShiftByOmega(X);
+    AddRange(GeneratorRange<T>(X, newSeqEnd, newSeqGen->Clone(), 0));
 }
 
 template<typename T>
 void CompositeGenerator<T>::Concat(const CompositeGenerator<T>& other) {
     for(int i = 0; i < other.GetRangeCount(); i++) {
         const auto& r = other.GetRange(i);
-        ranges->Append(GeneratorRange<T>(r.start, r.end, r.generator->Clone()));
+        ranges->Append(GeneratorRange<T>(r.start, r.end, r.generator->Clone(), r.localOffset));
         
-        // Глубокое копирование удаленных индексов
         auto* otherRemoved = other.removedIndices->Get(i);
         auto* newRemoved = new MutableArraySequence<int>();
         for(int j = 0; j < otherRemoved->GetLength(); j++) {
@@ -125,6 +208,56 @@ void CompositeGenerator<T>::Concat(const CompositeGenerator<T>& other) {
         }
         removedIndices->Append(newRemoved);
     }
+}
+
+template<typename T>
+void CompositeGenerator<T>::ConcatWithShift(const CompositeGenerator<T>& other, const OrdinalIndex& shift) {
+    for(int i = 0; i < other.ranges->GetLength(); i++) {
+        const auto& r = other.ranges->Get(i);
+        
+        // Сдвигаем границы диапазона
+        OrdinalIndex newStart = r.start.ShiftBy(shift);
+        OrdinalIndex newEnd = r.end.ShiftBy(shift);
+        
+        // Клонируем генератор и добавляем сдвинутый диапазон
+        ranges->Append(GeneratorRange<T>(newStart, newEnd, r.generator->Clone(), r.localOffset));
+        
+        // Глубокое копирование удалённых индексов
+        auto* otherRemoved = other.removedIndices->Get(i);
+        auto* newRemoved = new MutableArraySequence<int>();
+        for(int j = 0; j < otherRemoved->GetLength(); j++) {
+            newRemoved->Append(otherRemoved->Get(j));
+        }
+        removedIndices->Append(newRemoved);
+    }
+}
+
+template<typename T>
+CompositeGenerator<T>& CompositeGenerator<T>::operator=(const CompositeGenerator& other) {
+    if (this != &other) {
+        // 1. Очищаем текущее состояние
+        for(int i = 0; i < ranges->GetLength(); i++) delete ranges->Get(i).generator;
+        for(int i = 0; i < removedIndices->GetLength(); i++) delete removedIndices->Get(i);
+        delete ranges;
+        delete removedIndices;
+        
+        // 2. Копируем из other (дублируем логику конструктора копирования)
+        ranges = new MutableArraySequence<GeneratorRange<T>>();
+        removedIndices = new MutableArraySequence<MutableArraySequence<int>*>();
+        
+        for(int i = 0; i < other.ranges->GetLength(); i++) {
+            const auto& r = other.ranges->Get(i);
+            ranges->Append(GeneratorRange<T>(r.start, r.end, r.generator->Clone(), r.localOffset));
+            
+            auto* otherRemoved = other.removedIndices->Get(i);
+            auto* newRemoved = new MutableArraySequence<int>();
+            for(int j = 0; j < otherRemoved->GetLength(); j++) {
+                newRemoved->Append(otherRemoved->Get(j));
+            }
+            removedIndices->Append(newRemoved);
+        }
+    }
+    return *this;
 }
 
 #endif

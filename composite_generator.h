@@ -14,12 +14,9 @@ private:
 
 public:
     CompositeGenerator();
+    CompositeGenerator(const CompositeGenerator &other);
     ~CompositeGenerator();
-
-    // Запрещаем копирование, чтобы избежать double-free
-    CompositeGenerator(const CompositeGenerator&) = delete;
-    CompositeGenerator& operator=(const CompositeGenerator&) = delete;
-
+    
     void AddRange(const GeneratorRange<T>& range);
     int GetRangeCount() const;
     const GeneratorRange<T>& GetRange(int index) const;
@@ -33,8 +30,13 @@ public:
     void ShiftAllRanges(int count);
     void ShiftRangesAfter(const OrdinalIndex& border, int delta);
     
+    
     void InsertSequence(const OrdinalIndex& start, IGenerator<T>* generator);
     void Concat(const CompositeGenerator<T>& other);
+    void ConcatWithShift(const CompositeGenerator<T>& other, const OrdinalIndex& shift);
+    OrdinalIndex GetMaxEnd() const;
+
+    CompositeGenerator& operator=(const CompositeGenerator &other);
 
 private:
     int CountRemovedBefore(int rangeIndex, int trueLocalIndex) const;

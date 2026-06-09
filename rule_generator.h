@@ -6,9 +6,9 @@
 template<typename T>
 class RuleGenerator : public IGenerator<T> {
 private:
-    T (*ruleFunc)(int);
+    T (*ruleFunc)(const int&);
 public:
-    RuleGenerator(T (*func)(int)) : ruleFunc(func) {}
+    RuleGenerator(T (*func)(const int&)) : ruleFunc(func) {}
     
     T Generate(int localIndex) const override { return ruleFunc(localIndex); }
     IGenerator<T>* Clone() const override { return new RuleGenerator<T>(ruleFunc); }
