@@ -1,3 +1,6 @@
+#ifndef _LAZY_TESTS_
+#define _LAZY_TESTS_
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -7,10 +10,6 @@
 #include "lazy_sequence.h"
 #include "ordinal_index_parser.h"
 #include "base/exceptions.h"
-
-// ==========================================
-// Легковесный тестовый фреймворк
-// ==========================================
 
 int tests_passed = 0;
 int tests_failed = 0;
@@ -49,20 +48,14 @@ int tests_failed = 0;
         throw std::runtime_error("Wrong exception type thrown for " #expr); \
     }
 
-// ==========================================
-// Вспомогательные функции-генераторы
-// ==========================================
 
-int Square(const int &i) { return (i + 1) * (i + 1); }
-int Cube(const int &i)   { return (i + 1) * (i + 1) * (i + 1); }
-int Linear(const int &i) { return i * 10; }
+int TestSquare(const int &i) { return (i + 1) * (i + 1); }
+int TestCube(const int &i)   { return (i + 1) * (i + 1) * (i + 1); }
+int TestLinear(const int &i) { return i * 10; }
 
-// ==========================================
-// ТЕСТОВЫЕ СЛУЧАИ
-// ==========================================
 
 TEST_CASE(BasicGenerationAndCaching) {
-    RuleGenerator<int> gen(Square);
+    RuleGenerator<int> gen(TestSquare);
     LazySequence<int> seq(&gen);
 
     ASSERT_EQ(seq.Get(0), 1);
@@ -75,7 +68,7 @@ TEST_CASE(BasicGenerationAndCaching) {
 }
 
 TEST_CASE(ImmutablePrependAndAppend) {
-    RuleGenerator<int> gen(Square);
+    RuleGenerator<int> gen(TestSquare);
     LazySequence<int> base(&gen);
 
     // Создаем новые версии, оригинал не должен меняться
@@ -100,7 +93,7 @@ TEST_CASE(ImmutablePrependAndAppend) {
 }
 
 TEST_CASE(OrdinalArithmeticRemove) {
-    RuleGenerator<int> gen(Square);
+    RuleGenerator<int> gen(TestSquare);
     LazySequence<int> base(&gen);
     
     LazySequence<int>* seq1 = base.AppendLazy(99); // 99 на w
@@ -119,11 +112,11 @@ TEST_CASE(OrdinalArithmeticRemove) {
 }
 
 TEST_CASE(InsertSequenceSplitting) {
-    RuleGenerator<int> sqGen(Square);
+    RuleGenerator<int> sqGen(TestSquare);
     LazySequence<int> base(&sqGen);
 
     // Вставляем кубы, начиная с индекса 3
-    RuleGenerator<int> cubeGen(Cube);
+    RuleGenerator<int> cubeGen(TestCube);
     LazySequence<int>* seq = base.InsertSequence(OrdinalIndexParser::Parse("3"), &cubeGen);
 
     // Левая часть квадратов: [0, 3)
@@ -144,13 +137,13 @@ TEST_CASE(InsertSequenceSplitting) {
 }
 
 TEST_CASE(ConcatenationShifting) {
-    RuleGenerator<int> sqGen(Square);
+    RuleGenerator<int> sqGen(TestSquare);
     LazySequence<int> seq1(&sqGen);
     
     // Добавляем элемент в конец seq1 (на индекс w)
     LazySequence<int>* seq1_mod = seq1.AppendLazy(999);
 
-    RuleGenerator<int> linGen(Linear);
+    RuleGenerator<int> linGen(TestLinear);
     LazySequence<int> seq2(&linGen);
 
     LazySequence<int>* seq3 = seq1_mod->ConcatLazy(seq2);
@@ -164,7 +157,7 @@ TEST_CASE(ConcatenationShifting) {
 }
 
 TEST_CASE(DeepCopyAndMemorySafety) {
-    RuleGenerator<int> gen(Square);
+    RuleGenerator<int> gen(TestSquare);
     LazySequence<int> original(&gen);
     
     LazySequence<int>* seq1 = original.AppendLazy(42);
@@ -196,15 +189,15 @@ TEST_CASE(DeepCopyAndMemorySafety) {
 }
 
 TEST_CASE(SubsequenceAndEnumerator) {
-    RuleGenerator<int> gen(Square);
+    RuleGenerator<int> gen(TestSquare);
     LazySequence<int> seq(&gen);
     
     Sequence<int>* sub = seq.GetSubsequence(2, 5);
     ASSERT_EQ(sub->GetLength(), 4);
-    ASSERT_EQ(sub->Get(0), 9);  // Square(2)
-    ASSERT_EQ(sub->Get(1), 16); // Square(3)
-    ASSERT_EQ(sub->Get(2), 25); // Square(4)
-    ASSERT_EQ(sub->Get(3), 36); // Square(5)
+    ASSERT_EQ(sub->Get(0), 9);  // TestSquare(2)
+    ASSERT_EQ(sub->Get(1), 16); // TestSquare(3)
+    ASSERT_EQ(sub->Get(2), 25); // TestSquare(4)
+    ASSERT_EQ(sub->Get(3), 36); // TestSquare(5)
     delete sub;
 
     // Тест Enumerator
@@ -218,21 +211,17 @@ TEST_CASE(SubsequenceAndEnumerator) {
 }
 
 TEST_CASE(ErrorHandling) {
-    RuleGenerator<int> gen(Square);
+    RuleGenerator<int> gen(TestSquare);
     LazySequence<int> seq(&gen);
 
     ASSERT_THROW(seq.Get(-1), IndexOutOfRangeException);
     ASSERT_THROW(seq.GetLast(), BaseException);
-    ASSERT_THROW(seq.Map(Square), BaseException);
+    ASSERT_THROW(seq.Map(TestSquare), BaseException);
     ASSERT_THROW(seq.Where([](const int& x){ return x > 0; }), BaseException);
     ASSERT_THROW(seq.Reduce([](const int& a, const int& b){ return a+b; }, 0, new int()), BaseException);
 }
 
-// ==========================================
-// Главная функция
-// ==========================================
-
-int main() {
+void RunLazySequenceTests() {
     std::cout << "========================================\n";
     std::cout << "      LazySequence Unit Tests\n";
     std::cout << "========================================\n\n";
@@ -250,5 +239,6 @@ int main() {
     std::cout << "Results: \033[32m" << tests_passed << " passed\033[0m, \033[31m" << tests_failed << " failed\033[0m\n";
     std::cout << "========================================\n";
 
-    return tests_failed > 0 ? 1 : 0;
 }
+
+#endif
