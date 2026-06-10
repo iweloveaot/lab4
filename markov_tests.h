@@ -4,66 +4,59 @@
 #include <iostream>
 #include <cstring>
 #include <cassert>
+#include <string>
+#include <stdexcept>
 #include "markov_machine.h"
-
-using namespace std;
-
-// ==========================================
-// Простой тестовый фреймворк
-// ==========================================
 
 int testsPassed = 0;
 int testsFailed = 0;
 
 #define TEST(name) void name()
 #define RUN_TEST(name) do { \
-    cout << "Running " << #name << "... "; \
+    std::cout << "Running " << #name << "... "; \
     try { \
         name(); \
-        cout << "PASSED" << endl; \
+        std::cout << "PASSED" << std::endl; \
         testsPassed++; \
-    } catch (const exception& e) { \
-        cout << "FAILED: " << e.what() << endl; \
+    } catch (const std::exception& e) { \
+        std::cout << "FAILED: " << e.what() << std::endl; \
         testsFailed++; \
     } catch (...) { \
-        cout << "FAILED: unknown exception" << endl; \
+        std::cout << "FAILED: unknown exception" << std::endl; \
         testsFailed++; \
     } \
 } while(0)
 
 #define ASSERT_EQ(expected, actual) do { \
     if ((expected) != (actual)) { \
-        throw runtime_error(string("Assertion failed: expected ") + to_string(expected) + \
-                           " but got " + to_string(actual) + " at line " + to_string(__LINE__)); \
+        throw std::runtime_error(std::string("Assertion failed: expected ") + std::to_string(expected) + \
+                           " but got " + std::to_string(actual) + " at line " + std::to_string(__LINE__)); \
     } \
 } while(0)
 
 #define ASSERT_STREQ(expected, actual) do { \
-    if (strcmp((expected), (actual)) != 0) { \
-        throw runtime_error(string("Assertion failed: expected \"") + (expected) + \
-                           "\" but got \"" + (actual) + "\" at line " + to_string(__LINE__)); \
+    if (std::strcmp((expected), (actual)) != 0) { \
+        throw std::runtime_error(std::string("Assertion failed: expected \"") + (expected) + \
+                           "\" but got \"" + (actual) + "\" at line " + std::to_string(__LINE__)); \
     } \
 } while(0)
 
 #define ASSERT_TRUE(cond) do { \
     if (!(cond)) { \
-        throw runtime_error(string("Assertion failed: condition is false at line ") + to_string(__LINE__)); \
+        throw std::runtime_error(std::string("Assertion failed: condition is false at line ") + std::to_string(__LINE__)); \
     } \
 } while(0)
 
 #define ASSERT_FALSE(cond) do { \
     if ((cond)) { \
-        throw runtime_error(string("Assertion failed: condition is true at line ") + to_string(__LINE__)); \
+        throw std::runtime_error(std::string("Assertion failed: condition is true at line ") + std::to_string(__LINE__)); \
     } \
 } while(0)
 
-// ==========================================
-// Утилита для получения строки из последовательности
-// ==========================================
 
-string SeqToStr(MutableArraySequence<char>* seq) {
+std::string SeqToStr(MutableArraySequence<char>* seq) {
     if (!seq) return "";
-    string result;
+    std::string result;
     int len = seq->GetLength();
     for (int i = 0; i < len; i++) {
         result += seq->Get(i);
@@ -71,7 +64,6 @@ string SeqToStr(MutableArraySequence<char>* seq) {
     return result;
 }
 
-// Утилита для создания последовательности из строки
 MutableArraySequence<char>* CreateSeqFromString(const char* str) {
     MutableArraySequence<char>* seq = new MutableArraySequence<char>();
     for (int i = 0; str[i] != '\0'; i++) {
@@ -79,10 +71,6 @@ MutableArraySequence<char>* CreateSeqFromString(const char* str) {
     }
     return seq;
 }
-
-// ==========================================
-// Тесты для MarkovRule
-// ==========================================
 
 TEST(TestMarkovRule_Construction) {
     MarkovRule rule("abc", "def", false);
@@ -156,7 +144,7 @@ TEST(TestMarkovRule_ApplyToSequence) {
         seq.Append(str[i]);
     }
     rule.ApplyToSequence(seq, 1);
-    string result = SeqToStr(&seq);
+    std::string result = SeqToStr(&seq);
     ASSERT_STREQ("aXYZdef", result.c_str());
 }
 
@@ -168,13 +156,9 @@ TEST(TestMarkovRule_ApplyToSequence_EmptyReplacement) {
         seq.Append(str[i]);
     }
     rule.ApplyToSequence(seq, 1);
-    string result = SeqToStr(&seq);
+    std::string result = SeqToStr(&seq);
     ASSERT_STREQ("adef", result.c_str());
 }
-
-// ==========================================
-// Тесты для MarkovMachine
-// ==========================================
 
 TEST(TestMarkovMachine_Construction) {
     MarkovMachine mm;
@@ -204,7 +188,7 @@ TEST(TestMarkovMachine_SingleStep) {
     bool result = mm.Step();
     ASSERT_TRUE(result);
     ASSERT_EQ(1, mm.GetSteps());
-    string str = SeqToStr(mm.GetInput());
+    std::string str = SeqToStr(mm.GetInput());
     ASSERT_STREQ("Xbc", str.c_str());
 }
 
@@ -224,7 +208,7 @@ TEST(TestMarkovMachine_FinalRuleHalts) {
     bool result = mm.Step();
     ASSERT_TRUE(result);
     ASSERT_TRUE(mm.IsHalted());
-    string str = SeqToStr(mm.GetInput());
+    std::string str = SeqToStr(mm.GetInput());
     ASSERT_STREQ("Xbc", str.c_str());
 }
 
@@ -233,7 +217,7 @@ TEST(TestMarkovMachine_Execute_Simple) {
     mm.SetInput("aaa");
     mm.AddRule("a", "b", false);
     mm.Execute();
-    string str = SeqToStr(mm.GetInput());
+    std::string str = SeqToStr(mm.GetInput());
     ASSERT_STREQ("bbb", str.c_str());
     ASSERT_TRUE(mm.IsHalted());
 }
@@ -245,7 +229,7 @@ TEST(TestMarkovMachine_Execute_WithFinal) {
     mm.AddRule("b", "Y", true);
     mm.AddRule("c", "Z", false);
     mm.Execute();
-    string str = SeqToStr(mm.GetInput());
+    std::string str = SeqToStr(mm.GetInput());
     ASSERT_STREQ("XYc", str.c_str());
     ASSERT_TRUE(mm.IsHalted());
 }
@@ -255,7 +239,7 @@ TEST(TestMarkovMachine_Execute_Deletion) {
     mm.SetInput("a0b00c0");
     mm.AddRule("0", "", false);
     mm.Execute();
-    string str = SeqToStr(mm.GetInput());
+    std::string str = SeqToStr(mm.GetInput());
     ASSERT_STREQ("abc", str.c_str());
 }
 
@@ -265,7 +249,7 @@ TEST(TestMarkovMachine_Execute_UnaryAddition) {
     mm.AddRule("1+1", "11", false);
     mm.AddRule("+", "", true);
     mm.Execute();
-    string str = SeqToStr(mm.GetInput());
+    std::string str = SeqToStr(mm.GetInput());
     ASSERT_STREQ("11111", str.c_str());
 }
 
@@ -303,7 +287,7 @@ TEST(TestMarkovMachine_MultipleRules_FirstMatch) {
     mm.AddRule("a", "X", false);
     mm.AddRule("a", "Y", false);
     mm.Step();
-    string str = SeqToStr(mm.GetInput());
+    std::string str = SeqToStr(mm.GetInput());
     ASSERT_STREQ("Xbc", str.c_str());
 }
 
@@ -324,20 +308,15 @@ TEST(TestMarkovMachine_GetInput) {
     ASSERT_TRUE(mm.GetInput() == nullptr);
     mm.SetInput("test");
     ASSERT_TRUE(mm.GetInput() != nullptr);
-    string str = SeqToStr(mm.GetInput());
+    std::string str = SeqToStr(mm.GetInput());
     ASSERT_STREQ("test", str.c_str());
 }
 
-// ==========================================
-// Главная функция
-// ==========================================
-
 void RunMarkovMachineTests() {
-    cout << "========================================" << endl;
-    cout << "  Markov Machine — Unit Tests" << endl;
-    cout << "========================================" << endl << endl;
+    std::cout << "========================================" << std::endl;
+    std::cout << "  Markov Machine — Unit Tests" << std::endl;
+    std::cout << "========================================" << std::endl << std::endl;
 
-    // MarkovRule tests
     RUN_TEST(TestMarkovRule_Construction);
     RUN_TEST(TestMarkovRule_FinalRule);
     RUN_TEST(TestMarkovRule_CopyConstructor);
@@ -348,7 +327,6 @@ void RunMarkovMachineTests() {
     RUN_TEST(TestMarkovRule_ApplyToSequence);
     RUN_TEST(TestMarkovRule_ApplyToSequence_EmptyReplacement);
 
-    // MarkovMachine tests
     RUN_TEST(TestMarkovMachine_Construction);
     RUN_TEST(TestMarkovMachine_SetInput);
     RUN_TEST(TestMarkovMachine_AddRule);
@@ -366,9 +344,9 @@ void RunMarkovMachineTests() {
     RUN_TEST(TestMarkovMachine_SetInputResetsState);
     RUN_TEST(TestMarkovMachine_GetInput);
 
-    cout << endl << "========================================" << endl;
-    cout << "  Results: " << testsPassed << " passed, " << testsFailed << " failed" << endl;
-    cout << "========================================" << endl;
+    std::cout << std::endl << "========================================" << std::endl;
+    std::cout << "  Results: " << testsPassed << " passed, " << testsFailed << " failed" << std::endl;
+    std::cout << "========================================" << std::endl;
 }
 
 #endif

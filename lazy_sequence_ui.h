@@ -8,8 +8,6 @@
 #include "lazy_sequence.h"
 #include "ordinal_index_parser.h"
 
-using namespace std;
-
 
 int Square(const int &i) { return (i + 1) * (i + 1); }
 int Cube(const int &i)   { return (i + 1) * (i + 1) * (i + 1); }
@@ -33,15 +31,13 @@ void AddVersion(LazySequence<int>* newSeq) {
         currentIdx = versionCount;
         versionCount++;
     } else {
-        // Массив полон: удаляем самую старую версию (index 0)
         delete versions[0];
-        // Сдвигаем все на 1 позицию влево
         for (int i = 1; i < MAX_VERSIONS; i++) {
             versions[i - 1] = versions[i];
         }
         versions[MAX_VERSIONS - 1] = newSeq;
         currentIdx = MAX_VERSIONS - 1;
-        cout << "[info] History full. Oldest version deleted." << endl;
+        std::cout << "[info] History full. Oldest version deleted." << std::endl;
     }
 }
 
@@ -50,37 +46,36 @@ LazySequence<int>* Current() {
 }
 
 void PrintVersions() {
-    cout << "\n=== Sequence Versions (" << versionCount << "/" << MAX_VERSIONS << ") ===" << endl;
+    std::cout << "\n=== Sequence Versions (" << versionCount << "/" << MAX_VERSIONS << ") ===" << std::endl;
     for (int i = 0; i < versionCount; i++) {
-        cout << (i == currentIdx ? " -> " : "    ");
-        cout << "[" << i << "] cached=" << versions[i]->CachedCount() 
-             << ", ranges=" << versions[i]->RangeCount() << endl;
+        std::cout << (i == currentIdx ? " -> " : "    ");
+        std::cout << "[" << i << "] cached=" << versions[i]->CachedCount() 
+             << ", ranges=" << versions[i]->RangeCount() << std::endl;
     }
-    cout << "==========================================\n" << endl;
+    std::cout << "==========================================\n" << std::endl;
 }
 
 void PrintHelp() {
-    cout << "\n=== LazySequence Versioned Demo ===\n";
-    cout << "Все операции создают НОВУЮ версию последовательности.\n\n";
-    cout << "get INDEX              - получить элемент (5, w, w+2, 2w+10)\n";
-    cout << "prepend VALUE          - создать версию с добавлением в начало\n";
-    cout << "append VALUE           - создать версию с добавлением в конец\n";
-    cout << "insert INDEX VALUE     - создать версию со вставкой\n";
-    cout << "remove INDEX           - создать версию с удалением\n";
-    cout << "insertseq INDEX        - создать версию с последовательностью кубов\n";
-    cout << "concat                 - создать версию + Linear(0,10,20...) + [999,888]\n";
-    cout << "sub START END          - вывести конечную подпоследовательность\n";
-    cout << "tryfirst even|odd|gt N - поиск по предикату\n\n";
-    cout << "list                   - показать все версии\n";
-    cout << "switch N               - переключиться на версию N\n";
-    cout << "delete N               - удалить версию N\n";
-    cout << "info                   - информация о текущей версии\n";
-    cout << "help | exit\n";
-    cout << "===================================\n" << endl;
+    std::cout << "\n=== LazySequence Versioned Demo ===\n";
+    std::cout << "Все операции создают НОВУЮ версию последовательности.\n\n";
+    std::cout << "get INDEX              - получить элемент (5, w, w+2, 2w+10)\n";
+    std::cout << "prepend VALUE          - создать версию с добавлением в начало\n";
+    std::cout << "append VALUE           - создать версию с добавлением в конец\n";
+    std::cout << "insert INDEX VALUE     - создать версию со вставкой\n";
+    std::cout << "remove INDEX           - создать версию с удалением\n";
+    std::cout << "insertseq INDEX        - создать версию с последовательностью кубов\n";
+    std::cout << "concat                 - создать версию + Linear(0,10,20...) + [999,888]\n";
+    std::cout << "sub START END          - вывести конечную подпоследовательность\n";
+    std::cout << "tryfirst even|odd|gt N - поиск по предикату\n\n";
+    std::cout << "list                   - показать все версии\n";
+    std::cout << "switch N               - переключиться на версию N\n";
+    std::cout << "delete N               - удалить версию N\n";
+    std::cout << "info                   - информация о текущей версии\n";
+    std::cout << "help | exit\n";
+    std::cout << "===================================\n" << std::endl;
 }
 
 void RunLazyUI() {
-    // Инициализация: первая версия — последовательность квадратов
     RuleGenerator<int> squareGen(Square);
     versions[0] = new LazySequence<int>(&squareGen);
     versionCount = 1;
@@ -89,52 +84,48 @@ void RunLazyUI() {
     PrintHelp();
 
     while (true) {
-        cout << "[v" << currentIdx << "]> ";
-        string command;
-        if (!(cin >> command)) break;
+        std::cout << "[v" << currentIdx << "]> ";
+        std::string command;
+        if (!(std::cin >> command)) break;
 
         if (command == "exit") break;
         if (command == "help") { PrintHelp(); continue; }
 
-        try {
-            // ==========================================
-            // Операции, создающие НОВУЮ версию
-            // ==========================================
-            
+        try {            
             if (command == "prepend") {
-                int value; cin >> value;
+                int value; std::cin >> value;
                 LazySequence<int>* newSeq = Current()->PrependLazy(value);
                 AddVersion(newSeq);
-                cout << "Created version " << currentIdx << " with prepended " << value << endl;
+                std::cout << "Created version " << currentIdx << " with prepended " << value << std::endl;
             }
             else if (command == "append") {
-                int value; cin >> value;
+                int value; std::cin >> value;
                 LazySequence<int>* newSeq = Current()->AppendLazy(value);
                 AddVersion(newSeq);
-                cout << "Created version " << currentIdx << " with appended " << value << endl;
+                std::cout << "Created version " << currentIdx << " with appended " << value << std::endl;
             }
             else if (command == "insert") {
-                string idxString; int value;
-                cin >> idxString >> value;
+                std::string idxString; int value;
+                std::cin >> idxString >> value;
                 OrdinalIndex idx = OrdinalIndexParser::Parse(idxString);
                 LazySequence<int>* newSeq = Current()->InsertAtLazy(idx, value);
                 AddVersion(newSeq);
-                cout << "Created version " << currentIdx << " with inserted " << value << " at " << idx.ToString() << endl;
+                std::cout << "Created version " << currentIdx << " with inserted " << value << " at " << idx.ToString() << std::endl;
             }
             else if (command == "remove") {
-                string idxString; cin >> idxString;
+                std::string idxString; std::cin >> idxString;
                 OrdinalIndex idx = OrdinalIndexParser::Parse(idxString);
                 LazySequence<int>* newSeq = Current()->RemoveLazy(idx);
                 AddVersion(newSeq);
-                cout << "Created version " << currentIdx << " with removed element at " << idx.ToString() << endl;
+                std::cout << "Created version " << currentIdx << " with removed element at " << idx.ToString() << std::endl;
             }
             else if (command == "insertseq") {
-                string idxString; cin >> idxString;
+                std::string idxString; std::cin >> idxString;
                 OrdinalIndex idx = OrdinalIndexParser::Parse(idxString);
                 RuleGenerator<int> cubeGen(Cube);
                 LazySequence<int>* newSeq = Current()->InsertSequence(idx, &cubeGen);
                 AddVersion(newSeq);
-                cout << "Created version " << currentIdx << " with cubes inserted at " << idx.ToString() << endl;
+                std::cout << "Created version " << currentIdx << " with cubes inserted at " << idx.ToString() << std::endl;
             }
             else if (command == "concat") {
                 RuleGenerator<int> linearGen(Linear);
@@ -142,27 +133,27 @@ void RunLazyUI() {
                 
                 LazySequence<int>* newSeq = Current()->ConcatLazy(otherSeq);
                 AddVersion(newSeq);
-                cout << "Created version " << currentIdx << " concatenated with Linear " << endl;
+                std::cout << "Created version " << currentIdx << " concatenated with Linear " << std::endl;
             }
             else if (command == "get") {
-                string idxString; cin >> idxString;
+                std::string idxString; std::cin >> idxString;
                 OrdinalIndex idx = OrdinalIndexParser::Parse(idxString);
-                cout << Current()->Get(idx) << endl;
+                std::cout << Current()->Get(idx) << std::endl;
             }
             else if (command == "sub") {
                 int start, end;
-                cin >> start >> end;
+                std::cin >> start >> end;
                 Sequence<int>* sub = Current()->GetSubsequence(start, end);
-                cout << "Subsequence [" << start << ".." << end << "]: [";
+                std::cout << "Subsequence [" << start << ".." << end << "]: [";
                 for (int i = 0; i < sub->GetLength(); i++) {
-                    if (i > 0) cout << ", ";
-                    cout << sub->Get(i);
+                    if (i > 0) std::cout << ", ";
+                    std::cout << sub->Get(i);
                 }
-                cout << "]" << endl;
+                std::cout << "]" << std::endl;
                 delete sub;
             }
             else if (command == "tryfirst") {
-                string predName; cin >> predName;
+                std::string predName; std::cin >> predName;
                 Option<int> result = Option<int>::None();
                 
                 if (predName == "even") {
@@ -170,86 +161,84 @@ void RunLazyUI() {
                 } else if (predName == "odd") {
                     result = Current()->TryGetFirst(IsOdd);
                 } else if (predName == "gt") {
-                    cin >> threshold;
+                    std::cin >> threshold;
                     result = Current()->TryGetFirst(IsGreaterThan);
                 } else {
-                    cout << "Unknown predicate" << endl;
+                    std::cout << "Unknown predicate" << std::endl;
                     continue;
                 }
                 
                 if (result.HasValue()) {
-                    cout << "Found: " << result.GetValue() << endl;
+                    std::cout << "Found: " << result.GetValue() << std::endl;
                 } else {
-                    cout << "Not found" << endl;
+                    std::cout << "Not found" << std::endl;
                 }
             }
             else if (command == "list") {
                 PrintVersions();
             }
             else if (command == "switch") {
-                int n; cin >> n;
+                int n; std::cin >> n;
                 if (n < 0 || n >= versionCount) {
-                    cout << "Invalid version index" << endl;
+                    std::cout << "Invalid version index" << std::endl;
                 } else {
                     currentIdx = n;
-                    cout << "Switched to version " << currentIdx << endl;
+                    std::cout << "Switched to version " << currentIdx << std::endl;
                 }
             }
             else if (command == "delete") {
-                int n; cin >> n;
+                int n; std::cin >> n;
                 if (n < 0 || n >= versionCount) {
-                    cout << "Invalid version index" << endl;
+                    std::cout << "Invalid version index" << std::endl;
                 } else if (versionCount == 1) {
-                    cout << "Cannot delete the only version" << endl;
+                    std::cout << "Cannot delete the only version" << std::endl;
                 } else {
                     delete versions[n];
-                    // Сдвигаем все после n влево
                     for (int i = n; i < versionCount - 1; i++) {
                         versions[i] = versions[i + 1];
                     }
                     versionCount--;
-                    // Корректируем currentIdx
                     if (currentIdx >= versionCount) {
                         currentIdx = versionCount - 1;
                     } else if (currentIdx > n) {
                         currentIdx--;
                     }
-                    cout << "Deleted version " << n << endl;
+                    std::cout << "Deleted version " << n << std::endl;
                     PrintVersions();
                 }
             }
             else if (command == "info") {
                 LazySequence<int>* seq = Current();
-                cout << "\nCurrent version [" << currentIdx << "]:" << endl;
-                cout << "  Cached values:    " << seq->CachedCount() << endl;
-                cout << "  Generator ranges: " << seq->RangeCount() << endl;
-                cout << "  Length:           " << seq->GetLength() << " (infinite)" << endl;
-                cout << "  First 10:         [";
+                std::cout << "\nCurrent version [" << currentIdx << "]:" << std::endl;
+                std::cout << "  Cached values:    " << seq->CachedCount() << std::endl;
+                std::cout << "  Generator ranges: " << seq->RangeCount() << std::endl;
+                std::cout << "  Length:           " << seq->GetLength() << " (infinite)" << std::endl;
+                std::cout << "  First 10:         [";
                 for (int i = 0; i < 10; i++) {
-                    if (i > 0) cout << ", ";
-                    try { cout << seq->Get(i); } catch (...) { cout << "?"; }
+                    if (i > 0) std::cout << ", ";
+                    try { std::cout << seq->Get(i); } catch (...) { std::cout << "?"; }
                 }
-                cout << ", ...]" << endl << endl;
+                std::cout << ", ...]" << std::endl << std::endl;
             }
             else {
-                cout << "Unknown command. Type 'help'." << endl;
+                std::cout << "Unknown command. Type 'help'." << std::endl;
             }
         }
         catch (const BaseException& e) {
-            cout << "Error: " << e.what() << endl;
+            std::cout << "Error: " << e.what() << std::endl;
         }
-        catch (const exception& e) {
-            cout << "Error: " << e.what() << endl;
+        catch (const std::exception& e) {
+            std::cout << "Error: " << e.what() << std::endl;
         }
         catch (...) {
-            cout << "Cannot get element" << endl;
+            std::cout << "Cannot get element" << std::endl;
         }
     }
 
     for (int i = 0; i < versionCount; i++) {
         delete versions[i];
     }
-    cout << "All " << versionCount << " versions deleted. Goodbye!" << endl;
+    std::cout << "All " << versionCount << " versions deleted. Goodbye!" << std::endl;
 }
 
 #endif

@@ -80,7 +80,7 @@ private:
     MutableArraySequence<char>* StrToSequence(const char* str) {
         if (!str) return new MutableArraySequence<char>();
         int len = StrLen(str);
-        MutableArraySequence<char>* seq = new MutableArraySequence<char>();  // ← УБРАЛИ параметр len
+        MutableArraySequence<char>* seq = new MutableArraySequence<char>();
         for (int i = 0; i < len; i++) {
             seq->Append(str[i]);
         }

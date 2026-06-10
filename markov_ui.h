@@ -6,15 +6,9 @@
 #include <cstring>
 #include "markov_machine.h"
 
-using namespace std;
-
-// ==========================================
-// Утилиты
-// ==========================================
-
-string SequenceToString(MutableArraySequence<char>* seq) {
+std::string SequenceToString(MutableArraySequence<char>* seq) {
     if (!seq) return "";
-    string result;
+    std::string result;
     int len = seq->GetLength();
     for (int i = 0; i < len; i++) {
         result += seq->Get(i);
@@ -23,105 +17,84 @@ string SequenceToString(MutableArraySequence<char>* seq) {
 }
 
 void PrintRules(MarkovMachine& mm) {
-    // Мы не знаем точного количества правил извне, 
-    // но можем попытаться получить их по индексам
-    cout << "\n=== Текущие правила ===" << endl;
+    std::cout << "\n=== Текущие правила ===" << std::endl;
     for (int i = 0; ; i++) {
         try {
             const char* pat = mm.GetRulePattern(i);
             const char* repl = mm.GetRuleReplacement(i);
             if (!pat) break;
-            cout << "  [" << i << "] ";
-            // Проверяем, есть ли специальный символ для финального правила
-            // В данной реализации финальность хранится внутри MarkovRule,
-            // но публичного геттера IsFinal нет. Выводим просто паттерн и замену.
-            cout << "\"" << pat << "\" -> \"" << repl << "\"";
-            cout << endl;
+            std::cout << "  [" << i << "] ";
+            std::cout << "\"" << pat << "\" -> \"" << repl << "\"";
+            std::cout << std::endl;
         } catch (...) {
             break;
         }
     }
-    cout << "=======================\n" << endl;
+    std::cout << "=======================\n" << std::endl;
 }
 
 void PrintState(MarkovMachine& mm) {
-    cout << "\n--- Состояние машины ---" << endl;
+    std::cout << "\n--- Состояние машины ---" << std::endl;
     MutableArraySequence<char>* input = mm.GetInput();
     if (input) {
-        cout << "  Вход: \"" << SequenceToString(input) << "\"" << endl;
+        std::cout << "  Вход: \"" << SequenceToString(input) << "\"" << std::endl;
     } else {
-        cout << "  Вход: (не задан)" << endl;
+        std::cout << "  Вход: (не задан)" << std::endl;
     }
-    cout << "  Шагов выполнено: " << mm.GetSteps() << endl;
-    cout << "  Остановлена: " << (mm.IsHalted() ? "да" : "нет") << endl;
-    cout << "------------------------\n" << endl;
+    std::cout << "  Шагов выполнено: " << mm.GetSteps() << std::endl;
+    std::cout << "  Остановлена: " << (mm.IsHalted() ? "да" : "нет") << std::endl;
+    std::cout << "------------------------\n" << std::endl;
 }
-
-// ==========================================
-// Справка
-// ==========================================
 
 void PrintMarkovHelp() {
-    cout << "\n=== Машина Маркова — Интерактивный интерфейс ===" << endl;
-    cout << "Команды:" << endl;
-    cout << "  input <строка>         — установить входную строку" << endl;
-    cout << "  add <шаблон> <замена> [final] — добавить правило" << endl;
-    cout << "                           (final — опционально, делает правило завершающим)" << endl;
-    cout << "  step                   — выполнить один шаг" << endl;
-    cout << "  run                    — выполнить все шаги до остановки" << endl;
-    cout << "  state                  — показать текущее состояние" << endl;
-    cout << "  rules                  — показать список правил" << endl;
-    cout << "  reset                  — сбросить машину (очистить вход и шаги)" << endl;
-    cout << "  example1               — загрузить пример: удаление нулей" << endl;
-    cout << "  example2               — загрузить пример: сложение единиц" << endl;
-    cout << "  help                   — показать эту справку" << endl;
-    cout << "  exit                   — выход" << endl;
-    cout << "====================================================\n" << endl;
+    std::cout << "\n=== Машина Маркова — Интерактивный интерфейс ===" << std::endl;
+    std::cout << "Команды:" << std::endl;
+    std::cout << "  input <строка>         — установить входную строку" << std::endl;
+    std::cout << "  add <шаблон> <замена> [final] — добавить правило" << std::endl;
+    std::cout << "                           (final — опционально, делает правило завершающим)" << std::endl;
+    std::cout << "  step                   — выполнить один шаг" << std::endl;
+    std::cout << "  run                    — выполнить все шаги до остановки" << std::endl;
+    std::cout << "  state                  — показать текущее состояние" << std::endl;
+    std::cout << "  rules                  — показать список правил" << std::endl;
+    std::cout << "  reset                  — сбросить машину (очистить вход и шаги)" << std::endl;
+    std::cout << "  example1               — загрузить пример: удаление нулей" << std::endl;
+    std::cout << "  example2               — загрузить пример: сложение единиц" << std::endl;
+    std::cout << "  help                   — показать эту справку" << std::endl;
+    std::cout << "  exit                   — выход" << std::endl;
+    std::cout << "====================================================\n" << std::endl;
 }
-
-// ==========================================
-// Примеры
-// ==========================================
 
 void LoadExample1(MarkovMachine& mm) {
-    // Пример: удаление всех символов '0' из строки
     mm.SetInput("a0b00c0");
     mm.AddRule("0", "", false);
-    cout << "Загружен пример 1: удаление символов '0'" << endl;
-    cout << "Вход: \"a0b00c0\"" << endl;
-    cout << "Правило: \"0\" -> \"\"" << endl;
+    std::cout << "Загружен пример 1: удаление символов '0'" << std::endl;
+    std::cout << "Вход: \"a0b00c0\"" << std::endl;
+    std::cout << "Правило: \"0\" -> \"\"" << std::endl;
 }
-
 
 void LoadExample2(MarkovMachine& mm) {
-    // Пример: сложение двух unary чисел, разделённых '+'
-    // "111+11" -> "11111"
     mm.SetInput("111+11");
     mm.AddRule("1+1", "11", false);
-    mm.AddRule("1+1", "11", false); // дублируем для надёжности
-    mm.AddRule("+", "", true);      // убираем оставшийся '+' и останавливаемся
-    cout << "Загружен пример 2: сложение unary чисел" << endl;
-    cout << "Вход: \"111+11\"" << endl;
-    cout << "Правила:" << endl;
-    cout << "  \"1+1\" -> \"11\"" << endl;
-    cout << "  \"+\" -> \"\" (final)" << endl;
+    mm.AddRule("1+1", "11", false);
+    mm.AddRule("+", "", true);     
+    std::cout << "Загружен пример 2: сложение unary чисел" << std::endl;
+    std::cout << "Вход: \"111+11\"" << std::endl;
+    std::cout << "Правила:" << std::endl;
+    std::cout << "  \"1+1\" -> \"11\"" << std::endl;
+    std::cout << "  \"+\" -> \"\" (final)" << std::endl;
 }
 
-// ==========================================
-// Главная функция
-// ==========================================
-
 void RunMarkovUI() {
-    MarkovMachine mm(10000); // максимум 10000 шагов
+    MarkovMachine mm(10000);
     PrintMarkovHelp();
 
     while (true) {
-        cout << "[markov]> ";
-        string command;
-        if (!(cin >> command)) break;
+        std::cout << "[markov]> ";
+        std::string command;
+        if (!(std::cin >> command)) break;
 
         if (command == "exit" || command == "quit") {
-            cout << "Выход из программы." << endl;
+            std::cout << "Выход из программы." << std::endl;
             break;
         }
         else if (command == "help") {
@@ -134,69 +107,64 @@ void RunMarkovUI() {
             PrintRules(mm);
         }
         else if (command == "input") {
-            string str;
-            cin >> str;
+            std::string str;
+            std::cin >> str;
             mm.SetInput(str.c_str());
-            cout << "Входная строка установлена: \"" << str << "\"" << endl;
+            std::cout << "Входная строка установлена: \"" << str << "\"" << std::endl;
         }
         else if (command == "add") {
-            string pattern, replacement;
-            string finalFlag;
-            cin >> pattern >> replacement;
+            std::string pattern, replacement;
+            std::string finalFlag;
+            std::cin >> pattern >> replacement;
             bool isFinal = false;
-            // Проверяем, указан ли флаг "final"
-            if (cin >> finalFlag) {
+            if (std::cin >> finalFlag) {
                 if (finalFlag == "final" || finalFlag == "FINAL" || finalFlag == "1") {
                     isFinal = true;
-                } else {
-                    // Если это не флаг, значит это уже следующая команда — 
-                    // но мы не можем "вернуть" её в cin, поэтому просто игнорируем
-                    // В реальной программе лучше использовать getline
                 }
             }
             mm.AddRule(pattern.c_str(), replacement.c_str(), isFinal);
-            cout << "Добавлено правило: \"" << pattern << "\" -> \"" << replacement << "\"";
-            if (isFinal) cout << " (final)";
-            cout << endl;
+            std::cout << "Добавлено правило: \"" << pattern << "\" -> \"" << replacement << "\"";
+            if (isFinal) std::cout << " (final)";
+            std::cout << std::endl;
         }
         else if (command == "step") {
             bool applied = mm.Step();
             if (applied) {
                 MutableArraySequence<char>* input = mm.GetInput();
-                cout << "Шаг " << mm.GetSteps() << ": \"" << SequenceToString(input) << "\"" << endl;
+                std::cout << "Шаг " << mm.GetSteps() << ": \"" << SequenceToString(input) << "\"" << std::endl;
                 if (mm.IsHalted()) {
-                    cout << "Машина остановлена (финальное правило)." << endl;
+                    std::cout << "Машина остановлена (финальное правило)." << std::endl;
                 }
             } else {
-                cout << "Ни одно правило не применимо. Машина остановлена." << endl;
+                std::cout << "Ни одно правило не применимо. Машина остановлена." << std::endl;
             }
         }
         else if (command == "run") {
-            cout << "Выполнение..." << endl;
+            std::cout << "Выполнение..." << std::endl;
             mm.Execute();
             MutableArraySequence<char>* input = mm.GetInput();
-            cout << "Результат: \"" << SequenceToString(input) << "\"" << endl;
-            cout << "Выполнено шагов: " << mm.GetSteps() << endl;
-            cout << "Остановлена: " << (mm.IsHalted() ? "да" : "нет") << endl;
+            std::cout << "Результат: \"" << SequenceToString(input) << "\"" << std::endl;
+            std::cout << "Выполнено шагов: " << mm.GetSteps() << std::endl;
+            std::cout << "Остановлена: " << (mm.IsHalted() ? "да" : "нет") << std::endl;
         }
         else if (command == "reset") {
             mm = MarkovMachine(10000);
-            cout << "Машина сброшена." << endl;
+            std::cout << "Машина сброшена." << std::endl;
         }
         else if (command == "example1") {
             LoadExample1(mm);
-            cout << "Загружен пример 1. Выполните 'run' для результата." << endl;
+            std::cout << "Загружен пример 1. Выполните 'run' для результата." << std::endl;
         }
         else if (command == "example2") {
             LoadExample2(mm);
-            cout << "Загружен пример 2. Выполните 'run' для результата." << endl;
+            std::cout << "Загружен пример 2. Выполните 'run' для результата." << std::endl;
         }
         else {
-            cout << "Неизвестная команда. Введите 'help' для списка команд." << endl;
+            std::cout << "Неизвестная команда. Введите 'help' для списка команд." << std::endl;
         }
     }
 
-    cout << "Работа завершена." << endl;
+    std::cout << "Работа завершена." << std::endl;
 }
 
 #endif

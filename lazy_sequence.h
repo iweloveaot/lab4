@@ -287,11 +287,8 @@ public:
 
     LazySequence<T>* ConcatLazy(const LazySequence<T>& other) const {
         LazySequence<T>* result = new LazySequence<T>(*this);
-        
-        // 1. Находим максимальный занятый индекс в result
+
         OrdinalIndex maxEnd = result->generator->GetMaxEnd();
-        
-        // Учитываем кэш: если есть элемент на индексе X, то X+1 тоже занят
         for(int i = 0; i < result->cache->GetLength(); i++) {
             OrdinalIndex idx = result->cache->Get(i).index;
             OrdinalIndex nextIdx = idx + 1;
@@ -300,10 +297,7 @@ public:
             }
         }
         
-        // 2. Добавляем диапазоны из other со сдвигом на maxEnd
         result->generator->ConcatWithShift(*other.generator, maxEnd);
-        
-        // 3. Копируем кэш из other со сдвигом
         for(int i = 0; i < other.cache->GetLength(); i++) {
             CachedValue<T> cv = other.cache->Get(i);
             cv.index = cv.index.ShiftBy(maxEnd);

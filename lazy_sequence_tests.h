@@ -43,7 +43,7 @@ int tests_failed = 0;
         expr; \
         throw std::runtime_error("Expected exception " #exc_type " was not thrown"); \
     } catch (const exc_type&) { \
-        /* Успех: поймали ожидаемое исключение */ \
+         \
     } catch (...) { \
         throw std::runtime_error("Wrong exception type thrown for " #expr); \
     }
@@ -61,8 +61,7 @@ TEST_CASE(BasicGenerationAndCaching) {
     ASSERT_EQ(seq.Get(0), 1);
     ASSERT_EQ(seq.Get(4), 25);
     ASSERT_EQ(seq.Get(9), 100);
-    
-    // Проверка кэширования (мемоизации)
+
     ASSERT_EQ(seq.CachedCount(), 3);
     ASSERT_EQ(seq.IsCached(OrdinalIndexParser::Parse("4")), true);
 }
@@ -71,22 +70,18 @@ TEST_CASE(ImmutablePrependAndAppend) {
     RuleGenerator<int> gen(TestSquare);
     LazySequence<int> base(&gen);
 
-    // Создаем новые версии, оригинал не должен меняться
     LazySequence<int>* seq1 = base.AppendLazy(99);
     LazySequence<int>* seq2 = seq1->PrependLazy(100);
 
-    // Проверяем оригинал
     ASSERT_EQ(base.Get(0), 1);
     ASSERT_EQ(base.CachedCount(), 1);
 
-    // Проверяем seq1 (добавлено 99 в конец, т.е. на w)
     ASSERT_EQ(seq1->Get(0), 1);
     ASSERT_EQ(seq1->Get(OrdinalIndexParser::Parse("w")), 99);
 
-    // Проверяем seq2 (добавлено 100 в начало)
     ASSERT_EQ(seq2->Get(0), 100);
-    ASSERT_EQ(seq2->Get(1), 1); // Квадрат 1 сдвинулся на индекс 1
-    ASSERT_EQ(seq2->Get(OrdinalIndexParser::Parse("w")), 99); // w НЕ сдвинулся! (1 + w = w)
+    ASSERT_EQ(seq2->Get(1), 1);
+    ASSERT_EQ(seq2->Get(OrdinalIndexParser::Parse("w")), 99);
 
     delete seq1;
     delete seq2;
@@ -96,15 +91,13 @@ TEST_CASE(OrdinalArithmeticRemove) {
     RuleGenerator<int> gen(TestSquare);
     LazySequence<int> base(&gen);
     
-    LazySequence<int>* seq1 = base.AppendLazy(99); // 99 на w
-    LazySequence<int>* seq2 = seq1->PrependLazy(100); // 100 на 0, 99 остается на w
+    LazySequence<int>* seq1 = base.AppendLazy(99);
+    LazySequence<int>* seq2 = seq1->PrependLazy(100);
     
-    // Удаляем элемент из конечной зоны
     LazySequence<int>* seq3 = seq2->RemoveLazy(OrdinalIndexParser::Parse("0"));
     
-    // Элемент на w не должен был сдвинуться
     ASSERT_EQ(seq3->Get(OrdinalIndexParser::Parse("w")), 99);
-    ASSERT_EQ(seq3->Get(0), 1); // Бывший индекс 1 стал 0
+    ASSERT_EQ(seq3->Get(0), 1);
 
     delete seq1;
     delete seq2;
@@ -115,21 +108,16 @@ TEST_CASE(InsertSequenceSplitting) {
     RuleGenerator<int> sqGen(TestSquare);
     LazySequence<int> base(&sqGen);
 
-    // Вставляем кубы, начиная с индекса 3
     RuleGenerator<int> cubeGen(TestCube);
     LazySequence<int>* seq = base.InsertSequence(OrdinalIndexParser::Parse("3"), &cubeGen);
 
-    // Левая часть квадратов: [0, 3)
     ASSERT_EQ(seq->Get(0), 1);
     ASSERT_EQ(seq->Get(2), 9);
 
-    // Вставленные кубы: [3, w)
     ASSERT_EQ(seq->Get(3), 1); 
     ASSERT_EQ(seq->Get(4), 8); 
     ASSERT_EQ(seq->Get(10), 512);
 
-    // Правая часть квадратов уехала на [w, 2w)
-    // Индекс w соответствует бывшему локальному индексу 3 (т.е. 4^2 = 16)
     ASSERT_EQ(seq->Get(OrdinalIndexParser::Parse("w")), 16);
     ASSERT_EQ(seq->Get(OrdinalIndexParser::Parse("w+1")), 25);
 
@@ -140,7 +128,6 @@ TEST_CASE(ConcatenationShifting) {
     RuleGenerator<int> sqGen(TestSquare);
     LazySequence<int> seq1(&sqGen);
     
-    // Добавляем элемент в конец seq1 (на индекс w)
     LazySequence<int>* seq1_mod = seq1.AppendLazy(999);
 
     RuleGenerator<int> linGen(TestLinear);
@@ -162,30 +149,23 @@ TEST_CASE(DeepCopyAndMemorySafety) {
     
     LazySequence<int>* seq1 = original.AppendLazy(42);
     
-    // 1. Конструктор копирования
     LazySequence<int> copy1(*seq1);
     
-    // 2. Оператор присваивания
     LazySequence<int> copy2;
     copy2 = *seq1;
 
-    // Мутируем копию 1
     LazySequence<int>* copy1_mut = copy1.PrependLazy(100);
 
-    // Проверяем, что seq1 и copy2 НЕ изменились
     ASSERT_EQ(seq1->Get(0), 1);
     ASSERT_EQ(copy2.Get(0), 1);
     ASSERT_EQ(seq1->Get(OrdinalIndexParser::Parse("w")), 42);
     ASSERT_EQ(copy2.Get(OrdinalIndexParser::Parse("w")), 42);
 
-    // Проверяем, что copy1_mut изменился
     ASSERT_EQ(copy1_mut->Get(0), 100);
     ASSERT_EQ(copy1_mut->Get(1), 1);
 
     delete seq1;
     delete copy1_mut;
-    // Деструкторы copy1 и copy2 вызовутся автоматически. 
-    // Если бы Clone() не работал, здесь был бы Double Free или Segfault.
 }
 
 TEST_CASE(SubsequenceAndEnumerator) {
@@ -194,19 +174,18 @@ TEST_CASE(SubsequenceAndEnumerator) {
     
     Sequence<int>* sub = seq.GetSubsequence(2, 5);
     ASSERT_EQ(sub->GetLength(), 4);
-    ASSERT_EQ(sub->Get(0), 9);  // TestSquare(2)
-    ASSERT_EQ(sub->Get(1), 16); // TestSquare(3)
-    ASSERT_EQ(sub->Get(2), 25); // TestSquare(4)
-    ASSERT_EQ(sub->Get(3), 36); // TestSquare(5)
+    ASSERT_EQ(sub->Get(0), 9);  
+    ASSERT_EQ(sub->Get(1), 16);
+    ASSERT_EQ(sub->Get(2), 25);
+    ASSERT_EQ(sub->Get(3), 36);
     delete sub;
 
-    // Тест Enumerator
     IEnumerator<int>* it = seq.GetEnumerator();
     it->HasNext();
-    ASSERT_EQ(it->GetCurrent(), 1); // После первого HasNext() currentIndex=0
+    ASSERT_EQ(it->GetCurrent(), 1);
     it->Reset();
     it->HasNext();
-    ASSERT_EQ(it->GetCurrent(), 1); // Снова первый элемент после сброса
+    ASSERT_EQ(it->GetCurrent(), 1);
     delete it;
 }
 
